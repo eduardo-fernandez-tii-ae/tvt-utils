@@ -9,6 +9,6 @@ RUN apt install -y --no-install-recommends \
 
 RUN pip3 install python-gitlab
 
-COPY check-release-diff.py /home/check-release-diff.py
+COPY check-revisions-diffs.py /opt/check-revisions-diffs.py
 
 CMD ["/bin/bash"]

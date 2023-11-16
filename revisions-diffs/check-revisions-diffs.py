@@ -12,7 +12,7 @@ SECOND_REVISION = None
 GITLAB_URL   = os.getenv('GITLAB_URL')
 GITLAB_TOKEN = os.getenv('GITLAB_TOKEN')
 PROJECT_ID   = os.getenv('PROJECT_ID')
-REPORT_PATH  = 'tags-diff.html'
+REPORT_PATH  = 'revisions-diffs-report.html'
 
 def get_report_header(lht_name, rht_name):
   report_header  = f"<!doctype html><html><head><title>Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}</title>"
