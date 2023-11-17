@@ -3,23 +3,26 @@ import gitlab
 import os
 import re
 
-API_CHANGES = 0
-KAT_CHANGES = 0
-
-FIRST_REVISION  = None
-SECOND_REVISION = None
+API_CHANGES, KAT_CHANGES        = 0, 0
+FIRST_REVISION, SECOND_REVISION = None, None
 
 GITLAB_URL   = os.getenv('GITLAB_URL')
 GITLAB_TOKEN = os.getenv('GITLAB_TOKEN')
 PROJECT_ID   = os.getenv('PROJECT_ID')
-REPORT_PATH  = 'revisions-diffs-report.html'
+
+INCLUDE_DIR        = 'include/tii-cryptolib'
+KAT_FILE_EXTENSION = '.kat'
+KAT_TESTS_DIR      = 'tests/kat'
+REPORT_PATH        = 'revisions-diffs-report.html'
 
 def get_report_header(lht_name, rht_name):
-  report_header  = f"<!doctype html><html><head><title>Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}</title>"
+  title = f"Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}" 
+  report_header  = f"<!doctype html><html><head><title>{title}</title>"
   report_header += '<style>table {border: 1px solid #cccccc;}'
   report_header += 'td {padding: 10px; text-align: center; vertical-align: middle;}'
   report_header += '.top-border {border-top: 1px solid #cccccc;}'
-  report_header += f"</style></head><body><div align='center'><h1>Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}</h1></div><table align='center'>"
+  report_header += f"</style></head><body><div align='center'><h1>{title}</h1></div>"
+  report_header += "<table align='center'>"
 
   return report_header
 
@@ -32,7 +35,7 @@ def does_tag_exist(project, tag_name):
   except gitlab.exceptions.GitlabGetError:
     print(f"--- Tag '{tag_name}' does not exist.")
   except Exception as ex:
-    print(f"--- An unexpected exception occurred while validating existence of tag '{tag_name}':")
+    print(f"--- An unexpected exception occurred while validating tag '{tag_name}':")
     print(f"--- {ex}.")
 
   return result
@@ -70,7 +73,7 @@ def does_branch_exist(project, branch_name):
   except gitlab.exceptions.GitlabGetError:
     print(f"--- Branch '{branch_name}' does not exist.")
   except Exception as ex:
-    print(f"--- An unexpected exception occurred while validating existence of branch '{branch_name}':")
+    print(f"--- An unexpected exception occurred while validating branch '{branch_name}':")
     print(f"--- {ex}.")
 
   return result
@@ -108,22 +111,23 @@ def get_tags_diffs(lht_name, rht_name):
 
 def get_affected_lines_partial_report(removed_lines, added_lines):
   partial_report = ''
+  row            = "<tr><td><b>{}</b></td><td><div align='left'><i>{}</i></div></td></tr>"
 
   if not removed_lines:
-    partial_report += "<tr><td><b>Lines removed</b></td><td><div align='left'><i>None</i></div></td></tr>"
+    partial_report += row.format('Lines removed', 'None')
   else:
-    partial_report += f"<tr><td><b>Lines removed</b></td><td><div align='left'><i>{removed_lines[0]}</i></div></td></tr>"
+    partial_report += row.format('Lines removed', removed_lines[0])
 
     for i in range(1, len(removed_lines)):
-      partial_report += f"<tr><td></td><td><div align='left'><i>{removed_lines[i]}</i></div></td></tr>"
+      partial_report += row.format('', removed_lines[i])
 
   if not added_lines:
-    partial_report += "<tr><td><b>Lines added</b></td><td><div align='left'><i>None</i></div></td></tr>"
+    partial_report += row.format('Lines added', 'None')
   else:
-    partial_report += f"<tr><td><b>Lines added</b></td><td><div align='left'><i>{added_lines[0]}</i></div></td></tr>"
+    partial_report += row.format('Lines added', added_lines[0])
 
     for i in range(1, len(added_lines)):
-      partial_report += f"<tr><td></td><td><div align='left'><i>{added_lines[i]}</i></div></td></tr>"
+      partial_report += row.format('', added_lines[i])
 
   return partial_report
 
@@ -138,33 +142,35 @@ def process_diff_line(diff, removed_lines, added_lines, partial_report):
 
   return diff_report
 
-def process_removed_line(old_line, regex_match, filename):
+def did_api_change(regex_match):
   global API_CHANGES
 
-  removed_line = f"{old_line} | {regex_match if regex_match else 'Blank line'}"
+  result = False
 
-  if re.match(r"^\w*\s\w*\(", regex_match if regex_match else '') and re.match(r"^include/tii-cryptolib/.*\.h$", filename):
+  if re.match(r"^\w*\s\w*\(", regex_match if regex_match else ''):
     API_CHANGES += 1
+    result       = True
 
-  return removed_line
+  return result
 
-def process_added_line(new_line, regex_match):
-  added_line = f"{new_line} | {regex_match if regex_match else 'Blank line'}"
-
-  return added_line
-
-def get_partial_report(file_diff, add_top_border):
+def did_kat_file_change(filename):
   global KAT_CHANGES
 
-  filename = file_diff['new_path']
-  old_line = 1
-  new_line = 1
+  result = False
 
-  removed_lines = []
-  added_lines   = []
+  if os.path.splitext(filename)[1] == KAT_FILE_EXTENSION:
+    KAT_CHANGES += 1
+    result       = True
 
-  top_border     = "<td class='top-border'>" if add_top_border else '<td>'
-  partial_report = f"<tr>{top_border}<b>File name</b>{top_border}<div align='left'>{filename}</div></td></tr>"
+  return result
+
+def get_partial_report(file_diff, add_top_border, filename):
+  old_line, new_line         = 1, 1
+  removed_lines, added_lines = [], []
+
+  top_border      = "<td class='top-border'>" if add_top_border else '<td>'
+  partial_report  = f"<tr>{top_border}<b>File name</b>{top_border}"
+  partial_report += f"<div align='left'>{filename}</div></td></tr>"
 
   for line in file_diff['diff'].splitlines():
     d = re.match(r"^\@\@ -(\d*),\d* \+(\d*),\d* \@\@", line)
@@ -174,23 +180,25 @@ def get_partial_report(file_diff, add_top_border):
       new_line = int(d.group(2)) - 1
 
       partial_report += process_diff_line(diff, removed_lines, added_lines, partial_report)
-      removed_lines   = []
-      added_lines     = []
+      removed_lines, added_lines = [], []
 
     r = re.match("^\-(.*)", line)
     if r is not None:
-      removed_line = process_removed_line(old_line, r.group(1), filename)
-      removed_lines.append(removed_line)
-      new_line -= 1
+      new_line   -= 1
+      regex_match = r.group(1)
 
-      if re.match(r"^.*\.kat$", file_diff['new_path']):
-        KAT_CHANGES += 1
+      if did_api_change(r.group(1)) or did_kat_file_change(filename):
+        removed_line = f"{old_line} | {regex_match if regex_match else 'Blank line'}"
+        removed_lines.append(removed_line)
 
     a = re.match("^\+(.*)", line)
     if a is not None:
-      added_line = process_added_line(new_line, a.group(1))
-      added_lines.append(added_line)
-      old_line -= 1
+      old_line   -= 1
+      regex_match = a.group(1)
+
+      if did_api_change(a.group(1)) or did_kat_file_change(filename):
+        added_line = f"{new_line} | {regex_match if regex_match else 'Blank line'}"
+        added_lines.append(added_line)
 
     old_line += 1
     new_line += 1
@@ -209,8 +217,6 @@ def save_report(final_report):
     file.write(final_report)
 
 if __name__ == '__main__':
-  exit_code = 0
-
   parser = argparse.ArgumentParser(
     prog = 'Git tags comparator',
     description = 'Compares two given tags and outputs the diffs to an HTML file.')
@@ -218,14 +224,20 @@ if __name__ == '__main__':
   parser.add_argument('-lht', dest = 'lht_name', help = 'The most recent tag name')
   parser.add_argument('-rht', dest = 'rht_name', help = 'The second to most recent tag name')
 
-  args       = parser.parse_args()
-  tags_diffs = get_tags_diffs(args.lht_name, args.rht_name)
-
+  args           = parser.parse_args()
+  tags_diffs     = get_tags_diffs(args.lht_name, args.rht_name)
   final_report   = get_report_header(args.lht_name, args.rht_name)
   add_top_border = False
+  exit_code      = 0
 
   for file_diff in tags_diffs:
-    final_report  += get_partial_report(file_diff, add_top_border)
+    filename = file_diff['new_path']
+    dirname  = os.path.dirname(filename)
+
+    if dirname != INCLUDE_DIR and dirname != KAT_TESTS_DIR:
+      continue
+
+    final_report  += get_partial_report(file_diff, add_top_border, filename)
     add_top_border = True
 
   final_report += get_report_footer()
