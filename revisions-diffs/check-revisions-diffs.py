@@ -138,12 +138,12 @@ def process_diff_line(diff, removed_lines, added_lines, partial_report):
 
   return diff_report
 
-def process_removed_line(old_line, regex_match):
+def process_removed_line(old_line, regex_match, filename):
   global API_CHANGES
 
   removed_line = f"{old_line} | {regex_match if regex_match else 'Blank line'}"
 
-  if re.match(r"^\w*\s\w*\(", regex_match if regex_match else ''):
+  if re.match(r"^\w*\s\w*\(", regex_match if regex_match else '') and re.match(r"^include/tii-cryptolib/.*\.h$", filename):
     API_CHANGES += 1
 
   return removed_line
@@ -156,6 +156,7 @@ def process_added_line(new_line, regex_match):
 def get_partial_report(file_diff, add_top_border):
   global KAT_CHANGES
 
+  filename = file_diff['new_path']
   old_line = 1
   new_line = 1
 
@@ -163,7 +164,7 @@ def get_partial_report(file_diff, add_top_border):
   added_lines   = []
 
   top_border     = "<td class='top-border'>" if add_top_border else '<td>'
-  partial_report = f"<tr>{top_border}<b>File name</b>{top_border}<div align='left'>{file_diff['new_path']}</div></td></tr>"
+  partial_report = f"<tr>{top_border}<b>File name</b>{top_border}<div align='left'>{filename}</div></td></tr>"
 
   for line in file_diff['diff'].splitlines():
     d = re.match(r"^\@\@ -(\d*),\d* \+(\d*),\d* \@\@", line)
@@ -178,7 +179,7 @@ def get_partial_report(file_diff, add_top_border):
 
     r = re.match("^\-(.*)", line)
     if r is not None:
-      removed_line = process_removed_line(old_line, r.group(1))
+      removed_line = process_removed_line(old_line, r.group(1), filename)
       removed_lines.append(removed_line)
       new_line -= 1
 
@@ -208,6 +209,8 @@ def save_report(final_report):
     file.write(final_report)
 
 if __name__ == '__main__':
+  exit_code = 0
+
   parser = argparse.ArgumentParser(
     prog = 'Git tags comparator',
     description = 'Compares two given tags and outputs the diffs to an HTML file.')
@@ -227,21 +230,22 @@ if __name__ == '__main__':
 
   final_report += get_report_footer()
 
-  save_report(final_report)
-
   if API_CHANGES > 0:
     print(f"--- {API_CHANGES} API change(s) detected.")
     print('--- Please, proceed as follows:')
     print('---   1. Regenerate configuration files for fuzzing and constant time tools.')
     print('---   2. Check that the corresponding tests are using the correct new API.')
     print("---   3. Make sure the changes are reported in changelog and release notes.\n")
+    exit_code = 1
 
   if KAT_CHANGES > 0:
     print(f"--- {KAT_CHANGES} KAT change(s) detected.")
     print('--- This could imply a backward incompatible change. Please, proceed as follows:')
     print("---   1. Make sure the changes are reported in changelog and release notes.\n")
+    exit_code = 1
 
   if API_CHANGES > 0 or KAT_CHANGES > 0:
+    save_report(final_report)
     print(f"--- Review the changes at {REPORT_PATH}.")
 
-  exit(1)
+  exit(exit_code)
