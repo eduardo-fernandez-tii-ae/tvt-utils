@@ -10,13 +10,14 @@ GITLAB_URL   = os.getenv('GITLAB_URL')
 GITLAB_TOKEN = os.getenv('GITLAB_TOKEN')
 PROJECT_ID   = os.getenv('PROJECT_ID')
 
-INCLUDE_DIR        = 'include/tii-cryptolib'
-KAT_FILE_EXTENSION = '.kat'
-KAT_TESTS_DIR      = 'tests/kat'
-REPORT_PATH        = 'revisions-diffs-report.html'
+GITLAB_PROJECT_PATH = 'TIILIB/tii-cryptolib'
+INCLUDE_DIR         = 'include/tii-cryptolib'
+KAT_FILE_EXTENSION  = '.kat'
+KAT_TESTS_DIR       = 'tests/kat'
+REPORT_PATH         = 'revisions-diffs-report.html'
 
 def get_report_header(lht_name, rht_name):
-  title = f"Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}" 
+  title          = f"Diffs between revisions {FIRST_REVISION} and {SECOND_REVISION}" 
   report_header  = f"<!doctype html><html><head><title>{title}</title>"
   report_header += '<style>table {border: 1px solid #cccccc;}'
   report_header += 'td {padding: 10px; text-align: center; vertical-align: middle;}'
@@ -30,11 +31,13 @@ def does_tag_exist(project, tag_name):
   result = False
 
   try:
-    tag = project.tags.get(tag_name)
+    tag    = project.tags.get(tag_name)
     result = True
   except gitlab.exceptions.GitlabGetError:
-    print(f"--- Tag '{tag_name}' does not exist.")
+    result = False
   except Exception as ex:
+    result = False
+
     print(f"--- An unexpected exception occurred while validating tag '{tag_name}':")
     print(f"--- {ex}.")
 
@@ -53,12 +56,12 @@ def get_tags(project):
 
   return tags
 
-def get_tag_by_regex(project):
+def get_latest_tag_by_regex(project):
   result = None
   tags   = get_tags(project)
 
   for tag in tags:
-    if re.match(r"^v\d*\.\d*\.\d*-develop", tag.name):
+    if re.match(r"^v\d*\.\d*\.\d*$", tag.name):
       result = tag.name
       break
 
@@ -71,8 +74,10 @@ def does_branch_exist(project, branch_name):
     branch = project.branches.get(branch_name)
     result = True
   except gitlab.exceptions.GitlabGetError:
-    print(f"--- Branch '{branch_name}' does not exist.")
+    result = False
   except Exception as ex:
+    result = False
+
     print(f"--- An unexpected exception occurred while validating branch '{branch_name}':")
     print(f"--- {ex}.")
 
@@ -89,9 +94,9 @@ def get_revision(project, revision_name, default_to_branch):
         if does_branch_exist(project, revision_name):
           result = revision_name
       else:
-        result = get_tag_by_regex(project)
+        result = get_latest_tag_by_regex(project)
   elif not default_to_branch:
-    result = get_tag_by_regex(project)
+    result = get_latest_tag_by_regex(project)
 
   return result
 
@@ -102,8 +107,10 @@ def get_tags_diffs(lht_name, rht_name):
   gl      = gitlab.Gitlab(url = GITLAB_URL, private_token = GITLAB_TOKEN)
   project = gl.projects.get(PROJECT_ID)
 
-  FIRST_REVISION  = get_revision(project, lht_name, True)
-  SECOND_REVISION = get_revision(project, rht_name, False)
+  FIRST_REVISION  = get_revision(project, lht_name, False)
+  SECOND_REVISION = get_revision(project, rht_name, True)
+
+  print(f"--- Comparing revisions {FIRST_REVISION} and {SECOND_REVISION}.")
 
   comparison = project.repository_compare(FIRST_REVISION, SECOND_REVISION)
 
@@ -111,7 +118,8 @@ def get_tags_diffs(lht_name, rht_name):
 
 def get_affected_lines_partial_report(removed_lines, added_lines):
   partial_report = ''
-  row            = "<tr><td><b>{}</b></td><td bgcolor='lightgrey'><div align='left'><i>{}</i></div></td></tr>"
+  row            = '<tr><td><b>{}</b></td>'
+  row           += "<td bgcolor='lightgrey'><div align='left'><i>{}</i></div></td></tr>"
 
   if not removed_lines:
     partial_report += row.format('Lines removed', 'None')
@@ -122,7 +130,8 @@ def get_affected_lines_partial_report(removed_lines, added_lines):
       partial_report += row.format('', removed_lines[i])
 
   if not added_lines:
-    partial_report += row.format('Lines added', 'None')
+    row_info        = 'None' if removed_lines else 'Too many changes to display'
+    partial_report += row.format('Lines added', row_info)
   else:
     partial_report += row.format('Lines added', added_lines[0])
 
@@ -208,7 +217,18 @@ def get_partial_report(file_diff, add_top_border, filename):
   return partial_report
 
 def get_report_footer():
-  report_footer = '</table></body></html>'
+  compare_url = os.path.join(
+    GITLAB_URL,
+    GITLAB_PROJECT_PATH,
+    '-',
+    'compare',
+    FIRST_REVISION + '...' + SECOND_REVISION + '?from_project_id=' + PROJECT_ID)
+
+  link_text      = f"Comparison between {FIRST_REVISION} and {SECOND_REVISION}"
+  report_footer  = "<tr><td class='top-border'><b>For more information</b></td>"
+  report_footer += f"<td class='top-border'><div align='left'>"
+  report_footer += f"<a href='{compare_url}'>{link_text}</a></div></td></tr>"
+  report_footer += '</table></body></html>'
 
   return report_footer
 
@@ -259,5 +279,7 @@ if __name__ == '__main__':
   if API_CHANGES > 0 or KAT_CHANGES > 0:
     save_report(final_report)
     print(f"--- Review the changes at {REPORT_PATH}.")
+  else:
+    print(f"--- No API/KAT changes detected between revisions.")
 
   exit(exit_code)
