@@ -111,7 +111,7 @@ def get_tags_diffs(lht_name, rht_name):
 
 def get_affected_lines_partial_report(removed_lines, added_lines):
   partial_report = ''
-  row            = "<tr><td><b>{}</b></td><td><div align='left'><i>{}</i></div></td></tr>"
+  row            = "<tr><td><b>{}</b></td><td bgcolor='lightgrey'><div align='left'><i>{}</i></div></td></tr>"
 
   if not removed_lines:
     partial_report += row.format('Lines removed', 'None')
