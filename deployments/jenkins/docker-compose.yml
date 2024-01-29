@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  jenkins:
+    image: jenkins/jenkins:${JENKINS_VERSION}
+    hostname: jenkins
+    environment:
+      - JAVA_OPTS=$JAVA_OPTS -Dfile.encoding=UTF-8 -Dorg.apache.commons.jelly.tags.fmt.timeZone=${TZ} -Duser.timezone=${TZ} -Xmx${JENKINS_MAX_MEM} -XX:MaxPermSize=512m -Djava.awt.headless=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins-home:/var/jenkins_home
+    ports:
+      - 8080:8080
+    networks:
+      - gitlab_network
+
+  jenkins-agent:
+    image: jenkins-agent:v2
+    hostname: jenkins-agent
+    networks:
+      - gitlab_network
+
+volumes:
+  jenkins-home:
+
+networks:
+  gitlab_network:
+    name: gitlab_gitlab_network
+    external: true

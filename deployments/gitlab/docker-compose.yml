@@ -1,0 +1,87 @@
+# 1. Changing the port to various unused port in local so that we have no conflict
+# 2. I have previously set the GITLAB_HOME in /etc/paths file to point to ~/docker/storage/gitlab as I want to 
+#    centrally controlled where gitlab stores its file, logs and config 
+# 3. Memory size allocation to 4GB for a faster gitlab
+# 
+# 4. The ports section in the docker-compose.yml file tells Docker how to map the ports in the Docker containers to the ports 
+# on your host machine. In this case, the ports section is telling Docker to map port 81 on the Docker container to port 80 
+# on your host machine, port 444 on the Docker container to port 443 on your host machine, and port 23 on the Docker container 
+# to port 22 on your host machine.
+# The reason for this is that GitLab uses port 80 for HTTP traffic, port 443 for HTTPS traffic, and port 22 for SSH traffic. 
+# By mapping these ports in the docker-compose.yml file, you can access GitLab from a web browser, use GitLab over HTTPS, and 
+# use SSH to connect to the GitLab server.
+# 
+# If you are not planning to use GitLab over HTTPS or SSH, you can remove the 444:443 and 23:22 lines from the ports section. 
+# However, I recommend leaving them in place, as they will allow you to access GitLab in more ways.
+# 
+# 
+version: '3.6'
+services:
+  web:
+    image: 'gitlab/gitlab-ce:latest'
+    depends_on:
+       - redis
+       - postgresql
+    environment:
+       EXTERNAL_URL: "http://localhost:81"
+       GITLAB_OMNIBUS_CONFIG: |
+         postgresql['enable'] = false
+         gitlab_rails['db_username'] = "gitlab"
+         gitlab_rails['db_password'] = "gitlab"
+         gitlab_rails['db_host'] = "postgresql"
+         gitlab_rails['db_database'] = "gitlabDB"
+         gitlab_rails['db_adapter'] = 'postgresql'
+         gitlab_rails['db_encoding'] = 'utf8'
+         redis['enable'] = false
+         gitlab_rails['redis_host'] = 'redis'
+         gitlab_rails['redis_port'] = '6379'
+         prometheus['enable'] = false
+    container_name: gitlabce
+    restart:  always
+    ports:
+      - '81:80'
+      - '444:443'
+      - '23:22'
+    volumes:
+      - gitlab_config:/config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    networks:
+      - gitlab_network
+    shm_size: '4GB'
+
+  postgresql:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=gitlab
+      - POSTGRES_PASSWORD=gitlab
+      - POSTGRES_DB=gitlabDB
+    networks:
+      - gitlab_network
+
+  redis:
+    image: redis:latest
+    networks:
+      - gitlab_network
+
+  runner:
+    image: gitlab/gitlab-runner:latest
+    networks:
+      - gitlab_network
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gitlab-runner-config:/etc/gitlab-runner
+
+networks:
+  gitlab_network:
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  gitlab-runner-config:
+
+# volumes field is used to manage the data of your Docker containers. 
+# It allows you to define persistent data volumes that can be shared among containers and can 
+# persist beyond the lifetime of a single container.

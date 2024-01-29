@@ -1,0 +1,1 @@
+Run ssh-keyscan "[gitlab-domain]" >> ~/.known_hosts
