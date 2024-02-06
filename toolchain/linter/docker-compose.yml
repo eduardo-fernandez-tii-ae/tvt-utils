@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  hadolint:
+    container_name: hadolint
+    image: hadolint/hadolint:2.12.1-beta
+    volumes:
+      - $PWD/../Dockerfile:/tmp/Dockerfile
+    entrypoint: ["hadolint", "/tmp/Dockerfile"]
+
+  shellcheck:
+    container_name: shellcheck
+    image: koalaman/shellcheck:v0.9.0
+    volumes:
+      - $PWD/../valgrind/install.sh:/tmp/valgrind/install.sh
+      - $PWD/../ctgrind/install.sh:/tmp/ctgrind/install.sh
+      - $PWD/../dudect/install.sh:/tmp/dudect/install.sh
+      - $PWD/../flowtracker/install.sh:/tmp/flowtracker/install.sh
+    entrypoint: ["shellcheck", "/tmp/valgrind/install.sh", "/tmp/ctgrind/install.sh", "/tmp/dudect/install.sh", "/tmp/flowtracker/install.sh"]
