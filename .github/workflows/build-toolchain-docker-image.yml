@@ -1,0 +1,15 @@
+name: build-toolchain-docker-image
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: |
+        docker build . --file toolchain/Dockerfile --tag custom-binsec:$(date +%s)
+        docker images
