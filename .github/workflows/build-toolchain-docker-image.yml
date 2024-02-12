@@ -26,5 +26,5 @@ jobs:
 
     - name: Push API to AWS
       run: |
-        docker tag staging:latest ${{ steps.login-ecr.outputs.registry }}/estimators/staging:latest
-        docker push ${{ steps.login-ecr.outputs.registry }}/estimators/staging:latest
+        docker tag staging:latest public.ecr.aws/h0m6q0n8/estimators/staging:latest
+        docker push public.ecr.aws/h0m6q0n8/estimators/staging:latest
