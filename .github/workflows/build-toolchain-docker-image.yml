@@ -11,7 +11,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: |
-        docker build . --file toolchain/estimators/Dockerfile --tag staging
+        docker build toolchain/estimators --file toolchain/estimators/Dockerfile --tag staging
 
     - name: Configure AWS Credential
       uses: aws-actions/configure-aws-credentials@v1
