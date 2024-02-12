@@ -7,10 +7,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    environment: Staging
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: |
-        docker build . --file toolchain/Dockerfile --tag custom-binsec:$(date +%s)
-        docker images
+        docker build . --file toolchain/estimators/Dockerfile --tag staging
+
+    - name: Configure AWS Credential
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Push API to AWS
+      run: |
+        docker tag staging:latest ${{ steps.login-ecr.outputs.registry }}/staging:latest
+        docker push ${{ steps.login-ecr.outputs.registry }}/staging:latest
