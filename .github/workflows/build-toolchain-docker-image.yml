@@ -9,8 +9,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile --tag staging
+    - name: Build the staging Docker image
+      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging
+
+    - name: Build the production Docker image
+      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.production --tag production
 
     - name: Configure AWS Credential
       uses: aws-actions/configure-aws-credentials@v1
@@ -25,10 +28,18 @@ jobs:
       with:
         registry-type: public
 
-    - name: Push API to AWS
+    - name: Push API to AWS staging environment
       run: |
         docker tag staging:latest public.ecr.aws/h0m6q0n8/estimators/staging:latest
         docker push public.ecr.aws/h0m6q0n8/estimators/staging:latest
 
+    - name: Push API to AWS production environment
+      run: |
+        docker tag production:latest public.ecr.aws/h0m6q0n8/estimators/production:latest
+        docker push public.ecr.aws/h0m6q0n8/estimators/production:latest
+
+
     - name: Update AWS ECS
-      run: aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-eduardo-1 --force-new-deployment --region us-east-1
+      run: |
+        aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-staging --force-new-deployment --region us-east-1
+        aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-production --force-new-deployment --region us-east-1
