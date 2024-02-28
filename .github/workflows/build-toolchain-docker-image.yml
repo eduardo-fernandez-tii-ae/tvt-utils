@@ -13,14 +13,14 @@ jobs:
 
       - name: Build staging Docker image
         run: |
-          docker build -t public.ecr.aws/h0m6q0n8/staging/estimators/test:latest -f toolchain/estimators/Dockerfile.staging toolchain/estimators
-          docker save staging/estimators/test:latest --output /tmp/staging-image.tar
+          docker build -t staging/estimators/test:latest -f toolchain/estimators/Dockerfile.staging toolchain/estimators
+          docker save staging/estimators/test:latest --output /tmp/staging-estimators-test.tar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: staging-image
-          path: /tmp/staging-image.tar
+          path: /tmp/staging-estimators-test.tar
 
       - name: Configure AWS Credential
         uses: aws-actions/configure-aws-credentials@v1
@@ -37,6 +37,7 @@ jobs:
 
       - name: Push API to AWS staging environment
         run: |
+          docker tag staging/estimators/test:latest public.ecr.aws/h0m6q0n8/staging/estimators/test:latest
           docker push public.ecr.aws/h0m6q0n8/staging/estimators/test:latest
 
       - name: Update AWS ECS
@@ -57,7 +58,7 @@ jobs:
 
       - name: Load image
         run:
-          docker load --input /tmp/staging-image.tar
+          docker load --input /tmp/staging-estimators-test.tar
 
       - name: Push API to AWS production environment
         run: |
