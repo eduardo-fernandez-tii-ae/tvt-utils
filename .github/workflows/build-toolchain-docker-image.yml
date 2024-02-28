@@ -31,15 +31,19 @@ jobs:
     - name: Push API to AWS staging environment
       run: |
         docker tag staging:latest public.ecr.aws/h0m6q0n8/estimators/staging:latest
-        docker push public.ecr.aws/h0m6q0n8/estimators/staging:latest
+        echo "Pushing image..." 
+        # docker push public.ecr.aws/h0m6q0n8/estimators/staging:latest
 
     - name: Push API to AWS production environment
+      environment: production
       run: |
         docker tag production:latest public.ecr.aws/h0m6q0n8/estimators/production:latest
-        docker push public.ecr.aws/h0m6q0n8/estimators/production:latest
+        echo "Pushing image..." 
+        # docker push public.ecr.aws/h0m6q0n8/estimators/production:latest
 
 
     - name: Update AWS ECS
       run: |
-        aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-staging --force-new-deployment --region us-east-1
-        aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-production --force-new-deployment --region us-east-1
+        echo "Updating service..."
+        # aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-staging --force-new-deployment --region us-east-1
+        # aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-production --force-new-deployment --region us-east-1
