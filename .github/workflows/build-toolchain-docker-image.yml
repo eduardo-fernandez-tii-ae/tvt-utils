@@ -5,16 +5,9 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
+  configure-aws-credentials:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the staging Docker image
-      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging
-
-    - name: Build the production Docker image
-      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.production --tag production
-
     - name: Configure AWS Credential
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -28,11 +21,31 @@ jobs:
       with:
         registry-type: public
 
+  build-staging-resources:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Build the staging Docker image
+    - uses: actions/checkout@v3
+      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging
+
     - name: Push API to AWS staging environment
       run: |
         docker tag staging:latest public.ecr.aws/h0m6q0n8/estimators/staging:latest
-        echo "Pushing image..." 
+        echo "Pushing staging image..." 
         # docker push public.ecr.aws/h0m6q0n8/estimators/staging:latest
+
+    - name: Update AWS ECS
+      run:
+        echo "Updating staging service..."
+        # aws ecs update-service --cluster estimators-cluster --service estimators-staging-service --force-new-deployment --region us-east-1
+
+  build-production-resources:
+    runs-on: ubuntu-22.04
+    environment: production
+    steps:
+    - name: Build the production Docker image
+    - uses: actions/checkout@v3
+      run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.production --tag production
 
     - name: Push API to AWS production environment
       environment: production
@@ -41,9 +54,8 @@ jobs:
         echo "Pushing image..." 
         # docker push public.ecr.aws/h0m6q0n8/estimators/production:latest
 
-
     - name: Update AWS ECS
-      run: |
-        echo "Updating service..."
-        # aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-staging --force-new-deployment --region us-east-1
-        # aws ecs update-service --cluster estimators-cluster-eduardo --service estimators-service-production --force-new-deployment --region us-east-1
+      run:
+        echo "Updating staging service..."
+        # aws ecs update-service --cluster estimators-cluster --service estimators-staging-service --force-new-deployment --region us-east-1
+
