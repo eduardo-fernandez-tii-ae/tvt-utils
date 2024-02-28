@@ -17,8 +17,8 @@ jobs:
       - name: Build and export
         uses: docker/build-push-action@v5
         with:
-          context: toolchain/estimators 
-          file: Dockerfile.staging
+          context: toolchain/estimators
+          file: toolchain/estimators/Dockerfile.staging
           tags: staging/estimators/test:latest
           outputs: type=docker,dest=/tmp/staging-estimators-test.tar
 
