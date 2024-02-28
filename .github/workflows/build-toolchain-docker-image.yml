@@ -40,26 +40,8 @@ jobs:
   deploy-to-production:
     runs-on: ubuntu-22.04
     environment: production
+    needs: deploy-to-staging
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Configure AWS Credential
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-        with:
-          registry-type: public
-
-      - name: Build the production Docker image
-        run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging/estimators/test:latest
-
       - name: Push API to AWS production environment
         run: |
           docker tag staging/estimators/test:latest public.ecr.aws/h0m6q0n8/staging/estimators/test:latest
