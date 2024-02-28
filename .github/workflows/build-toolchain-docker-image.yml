@@ -11,6 +11,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and export
+        uses: docker/build-push-action@v5
+        with:
+          context: toolchain/estimators 
+          file: Dockerfile.staging
+          tags: staging/estimators/test:latest
+          outputs: type=docker,dest=/tmp/staging-estimators-test.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: staging-estimators-test-image
+          path: /tmp/staging-estimators-test.tar
+
       - name: Configure AWS Credential
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -23,9 +40,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         with:
           registry-type: public
-
-      - name: Build the staging Docker image
-        run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging/estimators/test:latest
 
       - name: Push API to AWS staging environment
         run: |
@@ -42,6 +56,16 @@ jobs:
     environment: production
     needs: deploy-to-staging
     steps:
+      - name: Retrieve staging Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: staging-estimators-test-image
+          path: /tmp
+
+      - name: Load image
+        run:
+          docker load --input /tmp/staging-estimators-test.tar
+
       - name: Push API to AWS production environment
         run: |
           docker tag staging/estimators/test:latest public.ecr.aws/h0m6q0n8/staging/estimators/test:latest
