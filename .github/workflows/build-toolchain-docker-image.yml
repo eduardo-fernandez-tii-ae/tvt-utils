@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Build the staging Docker image
-    - uses: actions/checkout@v3
+      uses: actions/checkout@v3
       run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging
 
     - name: Push API to AWS staging environment
@@ -44,11 +44,10 @@ jobs:
     environment: production
     steps:
     - name: Build the production Docker image
-    - uses: actions/checkout@v3
+      uses: actions/checkout@v3
       run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.production --tag production
 
     - name: Push API to AWS production environment
-      environment: production
       run: |
         docker tag production:latest public.ecr.aws/h0m6q0n8/estimators/production:latest
         echo "Pushing image..." 
