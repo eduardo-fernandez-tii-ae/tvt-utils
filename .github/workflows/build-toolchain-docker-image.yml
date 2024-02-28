@@ -58,7 +58,7 @@ jobs:
           registry-type: public
 
       - name: Build the production Docker image
-        run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.production --tag production
+        run: docker build toolchain/estimators --file toolchain/estimators/Dockerfile.staging --tag staging/estimators/test:latest
 
       - name: Push API to AWS production environment
         run: |
