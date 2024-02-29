@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
 
 jobs:
-  deploy-to-staging:
+  build-deploy-to-staging:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -19,7 +19,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: staging-image
+          name: staging-estimators-test
           path: /tmp/staging-estimators-test.tar
 
       - name: Configure AWS Credential
@@ -45,20 +45,33 @@ jobs:
           echo "Updating staging service..."
           # aws ecs update-service --cluster estimators-cluster --service estimators-staging-service --force-new-deployment --region us-east-1
 
-  deploy-to-production:
+  build-deploy-to-production:
     runs-on: ubuntu-22.04
     environment: production
-    needs: deploy-to-staging
+    needs: build-deploy-to-staging
     steps:
       - name: Retrieve staging Docker image
         uses: actions/download-artifact@v3
         with:
-          name: staging-image
+          name: staging-estimators-test
           path: /tmp
 
       - name: Load image
         run:
           docker load --input /tmp/staging-estimators-test.tar
+
+      - name: Configure AWS Credential
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
 
       - name: Push API to AWS production environment
         run: |
