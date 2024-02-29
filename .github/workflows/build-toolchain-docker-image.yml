@@ -15,12 +15,15 @@ jobs:
         run: |
           docker build -t staging/estimators/test:latest -f toolchain/estimators/Dockerfile.staging toolchain/estimators
           docker save staging/estimators/test:latest --output /tmp/staging-estimators-test.tar
+          echo "Hello world" > /tmp/hello.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: staging-estimators-test
-          path: /tmp/staging-estimators-test.tar
+          path: |
+            /tmp/staging-estimators-test.tar
+            /tmp/hello.txt
 
       - name: Configure AWS Credential
         uses: aws-actions/configure-aws-credentials@v1
@@ -57,8 +60,9 @@ jobs:
           path: /tmp
 
       - name: Load image
-        run:
-          docker load --input /tmp/staging-estimators-test.tar
+        run: |
+           docker load --input /tmp/staging-estimators-test.tar
+           ls -l /tmp
 
       - name: Configure AWS Credential
         uses: aws-actions/configure-aws-credentials@v1
